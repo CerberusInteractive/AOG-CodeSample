@@ -1,0 +1,17 @@
+C:\GitHub\azure-sdk-for-net\src\KeyVault\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\HelloKeyVault.exe.config
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\HelloKeyVault.exe.config
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\plainText.txt
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\HelloKeyVault.exe
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\HelloKeyVault.pdb
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.Azure.KeyVault.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.Azure.KeyVault.WebKey.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.WindowsForms.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.Rest.ClientRuntime.Azure.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.Rest.ClientRuntime.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Newtonsoft.Json.dll
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Microsoft.IdentityModel.Clients.ActiveDirectory.xml
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\bin\Debug\Newtonsoft.Json.xml
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\obj\Debug\HelloKeyVault.csprojResolveAssemblyReference.cache
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\obj\Debug\HelloKeyVault.exe
+E:\code\Microsoft.Azure.KeyVault.Samples-2016.11.22\Microsoft.Azure.KeyVault.Samples\samples\HelloKeyVault\obj\Debug\HelloKeyVault.pdb
