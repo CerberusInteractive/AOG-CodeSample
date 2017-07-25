@@ -25,7 +25,6 @@ $lbProbeResult = "";
 $lbNATResult = "";
 $lbRuleAssArray = [System.Collections.ArrayList]@();   # object ArrayList for lb rule association
 
-# Login  podnet@mcpod.partner.onmschina.cn ^
 # Login-AzureRmAccount -EnvironmentName AzureChinaCloud
 
 # Get SLB
@@ -53,7 +52,6 @@ Write-Host -ForegroundColor 3 "Getting Backendpool settings...";
 $be = $slb.BackendAddressPools[0]; # currently only for the first Backend Pool
 $beName = "`n`t" + $be.Name;
 $be.BackendIpConfigurations.id | foreach {
-	#$resGroupStr = $_.Split("/")[4];
 	$nic = $_.Split("/")[8];   # get nic now
 	$nicArray += $nic;
 }
@@ -108,12 +106,10 @@ if($slb.LoadBalancingRules.Name -eq $null) {
         $lbProbeName = $lbProbeId.Split("/")[10];
         $lbRuleAssociation =  "" | Select-Object -Property SLBpublicIP, BackendPool, LBRule, ProbeRule; #, FrontendName
         $lbRuleAssociation.SLBpublicIP = $lbfeConf; 
-        #$lbRuleAssociation.FrontendName = $lbFeName;
         $lbRuleAssociation.BackendPool = $lbBeName;
         $lbRuleAssociation.LBRule = $lbRuleName;
         $lbRuleAssociation.ProbeRule = $lbProbeName;
         [void]$lbRuleAssArray.Add($lbRuleAssociation);
-        #$lbRuleAssociation += "`n`t" + $lbFeName + " - " + $lbBeName + "`t" + $lbRuleName + "(" + $lbRuleProbe + ")" + "`t" + $lbProbeName;
     }
 }
 
