@@ -13,44 +13,72 @@ param(
     [String]$SubscriptionID
 )
 
-Function Count-VHDSize
+function Get-BlobBytes
 {
-    param(
-        [Parameter(Mandatory = $true)]
-        [String]$storageaccountname,
-
-        [Parameter(Mandatory = $true)]
-        [String]$storageaccountkey,
-
-        [Parameter(Mandatory = $true)]
-        [String]$VHDUri
-    )
-
-    $result = .\wazvhdsize.exe $storageaccountname $storageaccountkey $VHDUri
-    $vhdlength = ('{0:n0}' -f (($result[6].split(" "))[5].trim("(") / 1GB)) -replace ","
-
-    If ($result[7] -like " Error*") {
-        return @{"vhdlength" = $vhdlength; "usedsize" = "The VHD file is currently occupied, cannot read usedsize."}
-    } Else {
-        $usedsize = ('{0:n2}' -f (($result[7].split(" "))[6].trim("(") / 1GB)) -replace ","
-        return @{"vhdlength" = $vhdlength; "usedsize" = $usedsize}
+    param (
+        [Parameter(Mandatory=$true)]
+        [Microsoft.WindowsAzure.Commands.Common.Storage.ResourceModel.AzureStorageBlob]$Blob)
+ 
+    # Base + blob name
+    $blobSizeInBytes = 124 + $Blob.Name.Length * 2
+ 
+    # Get size of metadata
+    $metadataEnumerator = $Blob.ICloudBlob.Metadata.GetEnumerator()
+    while ($metadataEnumerator.MoveNext())
+    {
+        $blobSizeInBytes += 3 + $metadataEnumerator.Current.Key.Length + $metadataEnumerator.Current.Value.Length
     }
-}
+ 
+    if ($Blob.BlobType -eq [Microsoft.WindowsAzure.Storage.Blob.BlobType]::BlockBlob)
+    {
+        $blobSizeInBytes += 8
+        $Blob.ICloudBlob.DownloadBlockList() | 
+            ForEach-Object { $blobSizeInBytes += $_.Length + $_.Name.Length }
+    }
+    else
+    {
+        [int64]$rangeSize = 1GB
+        [int64]$start = 0; $pages = "Start";
+        
+        While ($pages)
+        {
+            try
+            {
+                $pages = $Blob.ICloudBlob.GetPageRanges($start, $rangeSize)
+            }
+            catch
+            {
+                if ($_ -like "*the range specified is invalid*")
+                {
+                    $pages = $null
+                    break
+                }
+                else
+                {
+                    write-error $_
+                }
+            }
+            $pages | ForEach-Object { $blobSizeInBytes += 12 + $_.EndOffset - $_.StartOffset }
+            $start += $rangeSize
+        }
+    }
+    return @{"vhdlength" = "{0:F2}" -f ($blob.Length / 1GB) -replace ","; "usedsize" = "{0:F2}" -f ($blobSizeInBytes / 1GB) -replace ","}
+} 
 
 Import-Module Azure
-Add-AzureAccount -Environment azurechinacloud
-Get-AzureSubscription -SubscriptionId $SubscriptionID | Select-AzureSubscription
+#Add-AzureAccount -Environment azurechinacloud
+Get-AzureSubscription -SubscriptionId $SubscriptionID 
+Select-AzureSubscription -SubscriptionId $SubscriptionID
 
-$armfile = $env:USERPROFILE+"\Downloads\wazvhdsize-v1.0\asmvms-"+$subscriptionID+".csv"
-$wazvhdsizepath = $env:USERPROFILE+"\Downloads\wazvhdsize-v1.0"
+$asmfile = $env:USERPROFILE+"\Downloads\asmvms-"+$subscriptionID+".csv"
 Set-Content $asmfile -Value "CloudService,VMName,VMSize,DiskName,OSorData,VHDUri,StorageAccount,VHDLength,VHDUsedSize"
-cd $wazvhdsizepath
 
 Write-Host "ASM part started!"
 
 $asmvms = Get-AzureVM
 
-foreach($asmvm in $asmvms) {
+foreach($asmvm in $asmvms) 
+{
     Start-Sleep -Seconds 20
     $vmcloudservice = $asmvm.ServiceName
     $vmname = $asmvm.Name
@@ -59,31 +87,49 @@ foreach($asmvm in $asmvms) {
     $vmosdiskuri = $asmvm.VM.OSVirtualHardDisk.MediaLink.AbsoluteUri
     $vmosdiskstorageaccountname = ($asmvm.VM.OSVirtualHardDisk.MediaLink.Host.Split("."))[0]
     $vmosdiskstorageaccountkey = (Get-AzureStorageKey -StorageAccountName $vmosdiskstorageaccountname).Primary
+    $vmosdiskstorageaccountcontext = New-AzureStorageContext -StorageAccountName $vmosdiskstorageaccountname -StorageAccountKey $vmosdiskstorageaccountkey
+    $vmosdiskcontainername = ($vmosdiskuri.Split("/")[3])
+    $vmosdiskblobname = ($vmosdiskuri.Split("/")[(($vmosdiskuri.Split("/")).count) - 1])
+    $vmosdiskblob = Get-AzureStorageBlob -Context $vmosdiskstorageaccountcontext -blob $vmosdiskblobname -Container $vmosdiskcontainername
 
-    $osvhdsize = Count-VHDSize $vmosdiskstorageaccountname $vmosdiskstorageaccountkey $vmosdiskuri
+    $osvhdsize = Get-BlobBytes $vmosdiskblob
 
-    If ($vmsize -like "*DS*") {
+    If ($vmsize -like "*DS*") 
+    {
         Add-Content $asmfile -Value ($vmcloudservice+","+$vmname+","+$vmsize+","+$vmosdiskname+",OSDisk,"+$vmosdiskuri+","+$vmosdiskstorageaccountname+","+$osvhdsize.vhdlength+",Premium Disks don't support GetBlobSize method")
-    } else {
+    } 
+    else 
+    {
         Add-Content $asmfile -Value ($vmcloudservice+","+$vmname+","+$vmsize+","+$vmosdiskname+",OSDisk,"+$vmosdiskuri+","+$vmosdiskstorageaccountname+","+$osvhdsize.vhdlength+","+$osvhdsize.usedsize)
     }
 
     $datadisks = $asmvm.vm.DataVirtualHardDisks
-    If ($datadisks.count -eq 0) {
+    If ($datadisks.count -eq 0) 
+    {
         Write-Host ("The VM "+$vmname+" contains no data disk.")
-    } else {
+    } 
+    else 
+    {
         Write-Host ("The VM "+$vmname+" contains "+$datadisks.count+" data disk(s).")
-        foreach ($datadisk in $datadisks) {
+        foreach ($datadisk in $datadisks) 
+        {
             $vmdatadiskname = $datadisk.DiskName
             $vmdatadiskuri = $datadisk.MediaLink.AbsoluteUri
             $vmdatadiskstorageaccountname = ($datadisk.MediaLink.Host.Split("."))[0]
             $vmdatadiskstorageaccountkey = (Get-AzureStorageKey -StorageAccountName $vmdatadiskstorageaccountname).Primary
+            $vmdatadiskstorageaccountcontext = New-AzureStorageContext -StorageAccountName $vmdatadiskstorageaccountname -StorageAccountKey $vmdatadiskstorageaccountkey
+            $vmdatadiskcontainername = ($vmdatadiskuri.Split("/")[3])
+            $vmdatadiskblobname = ($vmdatadiskuri.Split("/")[(($vmdatadiskuri.Split("/")).count) - 1])
+            $vmdatadiskblob = Get-AzureStorageBlob -Context $vmdatadiskstorageaccountcontext -blob $vmdatadiskblobname -Container $vmdatadiskcontainername
 
-            $datavhdsize = Count-VHDSize $vmdatadiskstorageaccountname $vmdatadiskstorageaccountkey $vmdatadiskuri
+            $datavhdsize = Get-BlobBytes $vmdatadiskblob
 
-            If ($vmsize -like "*DS*") {
+            If ($vmsize -like "*DS*") 
+            {
                 Add-Content $asmfile -Value ($vmcloudservice+","+$vmname+","+$vmsize+","+$vmdatadiskname+",DataDisk,"+$vmdatadiskuri+","+$vmdatadiskstorageaccountname+","+$datavhdsize.vhdlength+",Premium Disks don't support GetBlobSize method")
-            } else {
+            } 
+            else 
+            {
                 Add-Content $asmfile -Value ($vmcloudservice+","+$vmname+","+$vmsize+","+$vmdatadiskname+",DataDisk,"+$vmdatadiskuri+","+$vmdatadiskstorageaccountname+","+$datavhdsize.vhdlength+","+$datavhdsize.usedsize)
             }
         } 
