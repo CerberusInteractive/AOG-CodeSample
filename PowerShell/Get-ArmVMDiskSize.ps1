@@ -1,11 +1,18 @@
 ﻿<#
 .SYNOPSIS
-    This script grab all ARM VM VHD file in the subscription and caculate VHD size, leveraging the wazvhdsize tool developed by Sandrino Di Mattia (https://github.com/sandrinodimattia).
+    This script grab all ARM VM VHD file in the subscription and caculate VHD size.
 .DESCRIPTION
-    This script grab all ARM VM VHD file in the subscription and caculate VHD size, leveraging the wazvhdsize tool developed by Sandrino Di Mattia (https://github.com/sandrinodimattia).
+    This script grab all ARM VM VHD file in the subscription and caculate VHD size.
 .Example
     .\Get-ArmVMDiskSize.ps1 -subscriptionid xxxxxxx-xxxx-xxxx-xxxxxxx
     Then input the username and password of Azure China.
+.Disclaimer
+    This sample code is provided for the purpose of illustration only and is not intended to be used in a production environment.  
+    THIS SAMPLE CODE AND ANY RELATED INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.  
+    We grant You a nonexclusive, royalty-free right to use and modify the Sample Code and to reproduce and distribute the object code form of the Sample Code, provided that You agree:
+    (i)     to not use Our name, logo, or trademarks to market Your software product in which the Sample Code is embedded;
+    (ii)	to include a valid copyright notice on Your software product in which the Sample Code is embedded; 
+    (iii)	to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code.
 #>
 
 param(
@@ -65,6 +72,18 @@ function Get-BlobBytes
     return @{"vhdlength" = "{0:F2}" -f ($blob.Length / 1GB) -replace ","; "usedsize" = "{0:F2}" -f ($blobSizeInBytes / 1GB) -replace ","}
 } 
 
+function Get-VMCoresandMemory 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [String]$VMSize)
+
+    $csvfile = $env:USERPROFILE+"\Downloads\VMsizes.csv"
+    $VMSizeList = Import-Csv $csvfile 
+    $VMcoresmem = $VMSizeList | where {$_.Size -eq $VMSize}
+
+    return @{"Cores" = $VMcoresmem.Cores; "Memory" = $vmcoresmem.Memory}
+}
 
 Import-Module AzureRM.Compute
 $PSversion = (Get-Module -Name AzureRM.Compute).Version
@@ -75,12 +94,12 @@ If($PSversion -lt [System.Version]"2.6.0")
     Exit
 }
 
-#Login-AzureRmAccount -Environment azurechinacloud 
+Login-AzureRmAccount -Environment azurechinacloud 
 Get-AzureRmSubscription -SubscriptionId $SubscriptionID
 Select-AzureRmSubscription -SubscriptionId $SubscriptionID
 
 $armfile = $env:USERPROFILE+"\Downloads\armvms-"+$subscriptionID+".csv"
-Set-Content $armfile -Value "ResourceGroup,VMName,VMSize,DiskName,OSorData,VHDUri,StorageAccount,VHDLength,VHDUsedSize"
+Set-Content $armfile -Value "ResourceGroup,VMName,VMSize,Cores,Memory(GB),DiskName,OSorData,VHDUri,StorageAccount,VHDLength,VHDUsedSize"
 
 Write-Verbose "ARM part starts!"
 
@@ -91,6 +110,9 @@ foreach($armvm in $armvms)
     $vmresourcegroup = $armvm.ResourceGroupName
     $vmname = $armvm.Name
     $vmsize = $armvm.HardwareProfile.VmSize
+    $vmcores = (Get-VMCoresandMemory -VMSize $vmsize).Cores
+    $vmmemory = (Get-VMCoresandMemory -VMSize $vmsize).Memory
+
     $vmosdiskname = $armvm.StorageProfile.OsDisk.Name
     If ($armvm.StorageProfile.OsDisk.vhd -eq $null) 
     {
@@ -109,7 +131,7 @@ foreach($armvm in $armvms)
             {
                 $vmdatadiskname = $datadisk.Name
                 $vmdatadisksize = (Get-AzureRmDisk -ResourceGroupName $vmresourcegroup -DiskName $vmdatadiskname).DiskSizeGB
-                Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmdatadiskname+",DataDisk,No visible VHD files for Managed Disk VM,No visible storage account for Managed Disk VM,"+$vmdatadisksize+",Managed Disks don't support GetBlobSize method")
+                Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmcores+","+$vmmemory+","+$vmdatadiskname+",DataDisk,No visible VHD files for Managed Disk VM,No visible storage account for Managed Disk VM,"+$vmdatadisksize+",Managed Disks don't support GetBlobSize method")
             }
         }
     } 
@@ -127,11 +149,11 @@ foreach($armvm in $armvms)
 
         If ($vmsize -like "*DS*") 
         {
-            Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmosdiskname+",OSDisk,"+$vmosdiskuri+","+$vmosdiskstorageaccountname+","+$osvhdsize+",Premium Disks don't support GetBlobSize method")
+            Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmcores+","+$vmmemory+","+$vmosdiskname+",OSDisk,"+$vmosdiskuri+","+$vmosdiskstorageaccountname+","+$osvhdsize+",Premium Disks don't support GetBlobSize method")
         } 
         else 
         {
-            Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmosdiskname+",OSDisk,"+$vmosdiskuri+","+$vmosdiskstorageaccountname+","+$osvhdsize.vhdlength+","+$osvhdsize.usedsize)
+            Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmcores+","+$vmmemory+","+$vmosdiskname+",OSDisk,"+$vmosdiskuri+","+$vmosdiskstorageaccountname+","+$osvhdsize.vhdlength+","+$osvhdsize.usedsize)
         }
 
         $datadisks = $armvm.StorageProfile.DataDisks
@@ -157,11 +179,11 @@ foreach($armvm in $armvms)
                 
                 If ($vmsize -like "*DS*") 
                 {
-                    Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmdatadiskname+",DataDisk,"+$vmdatadiskuri+","+$vmdatadiskstorageaccountname+","+$datavhdsize.vhdlength+",Premium Disks don't support GetBlobSize method")
+                    Add-Content $armfile -Value (",,,,,"+$vmdatadiskname+",DataDisk,"+$vmdatadiskuri+","+$vmdatadiskstorageaccountname+","+$datavhdsize.vhdlength+",Premium Disks don't support GetBlobSize method")
                 } 
                 else 
                 {
-                    Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmdatadiskname+",DataDisk,"+$vmdatadiskuri+","+$vmdatadiskstorageaccountname+","+$datavhdsize.vhdlength+","+$datavhdsize.usedsize)
+                    Add-Content $armfile -Value (",,,,,"+$vmdatadiskname+",DataDisk,"+$vmdatadiskuri+","+$vmdatadiskstorageaccountname+","+$datavhdsize.vhdlength+","+$datavhdsize.usedsize)
                 }
             }
         }
