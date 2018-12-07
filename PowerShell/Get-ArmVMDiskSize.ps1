@@ -118,7 +118,7 @@ foreach($armvm in $armvms)
     {
         Write-Host ("The VM "+$vmname+" is using Managed Disks.")
         $vmosdisksize = (Get-AzureRmDisk -ResourceGroupName $vmresourcegroup -DiskName $vmosdiskname).DiskSizeGB
-        Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+“,”+$vmosdiskname+",OSDisk,No visible VHD files for Managed Disk VM,No visible storage account for Managed Disk VM,"+$vmosdisksize+",Managed Disks don't support GetBlobSize method")
+        Add-Content $armfile -Value ($vmresourcegroup+","+$vmname+","+$vmsize+","+$vmosdiskname+",OSDisk,No visible VHD files for Managed Disk VM,No visible storage account for Managed Disk VM,"+$vmosdisksize+",Managed Disks don't support GetBlobSize method")
         $datadisks = $armvm.StorageProfile.DataDisks
         If ($datadisks.Count -eq 0) 
         {
